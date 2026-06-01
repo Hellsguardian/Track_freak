@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { SleepState, SleepBatch, NutritionState } from '../types';
 import { sleepService } from '../services/sleepService';
+import { wellnessService } from '../services/wellnessService';
+
+const getCurrentTimeStr = () => {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+};
 
 export function useWellness() {
   // Sleep state
-  const [sleep, setSleep] = useState<SleepState>({ start: "23:15", end: "06:40", isSleeping: false });
+  const [sleep, setSleep] = useState<SleepState>({ start: getCurrentTimeStr(), end: getCurrentTimeStr(), isSleeping: false });
   const [currentSessionSeconds, setCurrentSessionSeconds] = useState(0);
   const [batches, setBatches] = useState<SleepBatch[]>([]);
   const activeSessionIdRef = useRef<string | null>(null);
@@ -17,7 +23,7 @@ export function useWellness() {
       const start = new Date(activeSession.startTimeIso);
       const diffSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
       setCurrentSessionSeconds(diffSeconds);
-      setSleep(prev => ({ ...prev, start: activeSession.start, isSleeping: true }));
+      setSleep(prev => ({ ...prev, start: activeSession.start, end: getCurrentTimeStr(), isSleeping: true }));
       return true;
     } else {
       // If it was stopped in another tab, sync the stoppage
@@ -27,14 +33,60 @@ export function useWellness() {
     }
   };
 
+  // Water state
+  const [water, _setWater] = useState(0);
+  const [isWaterDragging, setIsWaterDragging] = useState(false);
+  const waterRef = React.useRef<HTMLDivElement>(null);
+  const isDraggingRef = React.useRef(false);
+  const hydrationTimerRef = useRef<any>(null);
+
+  const setWater = (val: number | ((prev: number) => number)) => {
+    _setWater(prev => {
+      const newValue = typeof val === 'function' ? val(prev) : val;
+      if (hydrationTimerRef.current) clearTimeout(hydrationTimerRef.current);
+      hydrationTimerRef.current = setTimeout(() => {
+        wellnessService.updateHydration(newValue);
+      }, 500);
+      return newValue;
+    });
+  };
+
+  // Nutrition state
+  const [nutrition, _setNutrition] = useState<NutritionState>({ breakfast: false, lunch: false, dinner: false });
+
+  const setNutrition = (val: NutritionState | ((prev: NutritionState) => NutritionState)) => {
+    _setNutrition(prev => {
+      const newValue = typeof val === 'function' ? val(prev) : val;
+      wellnessService.updateNutrition(newValue);
+      return newValue;
+    });
+  };
+
   useEffect(() => {
-    const loadSleepData = async () => {
-      await syncActiveSession();
+    const loadData = async () => {
+      // 1. Hydrate Wellness Node (Breakfast, Lunch, Dinner, Water)
+      const todayNode = await wellnessService.getTodayNode();
+      if (todayNode) {
+        _setNutrition({
+          breakfast: todayNode.breakfast,
+          lunch: todayNode.lunch,
+          dinner: todayNode.dinner
+        });
+        _setWater(todayNode.hydration_units);
+      }
+
+      // 2. Hydrate Sleep Data
+      const wasActive = await syncActiveSession();
 
       const historicalBatches = await sleepService.getSleepSessions();
       setBatches(historicalBatches);
+
+      if (!wasActive && historicalBatches.length > 0) {
+        const newest = historicalBatches[0];
+        setSleep(prev => ({ ...prev, start: newest.start, end: newest.end }));
+      }
     };
-    loadSleepData();
+    loadData();
 
     const handleVisibilityFocus = () => {
       if (document.visibilityState === 'visible') {
@@ -51,15 +103,6 @@ export function useWellness() {
     };
   }, []);
 
-  // Water state
-  const [water, setWater] = useState(3);
-  const [isWaterDragging, setIsWaterDragging] = useState(false);
-  const waterRef = React.useRef<HTMLDivElement>(null);
-  const isDraggingRef = React.useRef(false);
-
-  // Nutrition state
-  const [nutrition, setNutrition] = useState<NutritionState>({ breakfast: true, lunch: true, dinner: false });
-
   // Training state
   const [training, setTraining] = useState(true);
 
@@ -69,6 +112,8 @@ export function useWellness() {
     if (sleep.isSleeping) {
       interval = setInterval(() => {
         setCurrentSessionSeconds(prev => prev + 1);
+        // Live update the termination time card while sleeping
+        setSleep(prev => ({ ...prev, end: getCurrentTimeStr() }));
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -89,7 +134,7 @@ export function useWellness() {
       }
 
       // Optimistic UI update
-      setSleep(prev => ({ ...prev, start: timeStr, isSleeping: true }));
+      setSleep(prev => ({ ...prev, start: timeStr, end: timeStr, isSleeping: true }));
       setCurrentSessionSeconds(0);
       
       const newSession = await sleepService.startSleepSession();
@@ -144,7 +189,7 @@ export function useWellness() {
     const x = clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
     const value = Math.round(percentage * 5);
-    setWater(value);
+    setWater(value); // This safely debounces via our wrapper!
   };
 
   const onWaterPointerDown = (e: React.PointerEvent) => {
@@ -168,11 +213,12 @@ export function useWellness() {
 
   // Reset function for daily reset
   const resetWellness = () => {
-    setSleep({ start: "23:15", end: "06:40", isSleeping: false });
+    const nowStr = getCurrentTimeStr();
+    setSleep({ start: nowStr, end: nowStr, isSleeping: false });
     setCurrentSessionSeconds(0);
     setBatches([]);
-    setWater(0);
-    setNutrition({ breakfast: false, lunch: false, dinner: false });
+    _setWater(0);
+    _setNutrition({ breakfast: false, lunch: false, dinner: false });
     setTraining(false);
   };
 
