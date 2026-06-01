@@ -83,6 +83,30 @@ export const sleepService = {
   startSleepSession: async (): Promise<{ id: string, start: string } | null> => {
     if (!supabase) return null;
 
+    // 1. Query for existing active sessions
+    const { data: existingActive, error: checkError } = await supabase
+      .from('sleep_sessions')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('[sleepService] Error checking for active sessions:', checkError.message);
+      return null;
+    }
+
+    // 2. If active session exists, return it
+    if (existingActive) {
+      console.log('[sleepService] Active session already exists. Restoring:', existingActive.id);
+      return {
+        id: existingActive.id,
+        start: existingActive.start_time.substring(0, 5)
+      };
+    }
+
+    // 3. Create a new row
     const now = new Date();
     const sleepDate = now.toISOString().split('T')[0];
     const timeString = getLocalTimeString(now);
@@ -98,8 +122,27 @@ export const sleepService = {
       .select()
       .single();
 
+    // 4. Handle constraint violations gracefully
     if (error) {
       console.error('[sleepService] Error starting sleep session:', error.message, error.details);
+      
+      // If unique constraint violation (Postgres code 23505), fetch the concurrently created session
+      if (error.code === '23505') {
+        console.log('[sleepService] Caught unique constraint violation. Fetching the concurrent active session...');
+        const { data: concurrentActive } = await supabase
+          .from('sleep_sessions')
+          .select('*')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+          
+        if (concurrentActive) {
+          return {
+            id: concurrentActive.id,
+            start: concurrentActive.start_time.substring(0, 5)
+          };
+        }
+      }
       return null;
     }
 

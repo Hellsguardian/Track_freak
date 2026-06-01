@@ -9,22 +9,46 @@ export function useWellness() {
   const [batches, setBatches] = useState<SleepBatch[]>([]);
   const activeSessionIdRef = useRef<string | null>(null);
 
+  const syncActiveSession = async () => {
+    const activeSession = await sleepService.getActiveSession();
+    if (activeSession) {
+      activeSessionIdRef.current = activeSession.id;
+      const now = new Date();
+      const start = new Date(activeSession.startTimeIso);
+      const diffSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
+      setCurrentSessionSeconds(diffSeconds);
+      setSleep(prev => ({ ...prev, start: activeSession.start, isSleeping: true }));
+      return true;
+    } else {
+      // If it was stopped in another tab, sync the stoppage
+      setSleep(prev => ({ ...prev, isSleeping: false }));
+      activeSessionIdRef.current = null;
+      return false;
+    }
+  };
+
   useEffect(() => {
     const loadSleepData = async () => {
-      const activeSession = await sleepService.getActiveSession();
-      if (activeSession) {
-        activeSessionIdRef.current = activeSession.id;
-        const now = new Date();
-        const start = new Date(activeSession.startTimeIso);
-        const diffSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
-        setCurrentSessionSeconds(diffSeconds);
-        setSleep(prev => ({ ...prev, start: activeSession.start, isSleeping: true }));
-      }
+      await syncActiveSession();
 
       const historicalBatches = await sleepService.getSleepSessions();
       setBatches(historicalBatches);
     };
     loadSleepData();
+
+    const handleVisibilityFocus = () => {
+      if (document.visibilityState === 'visible') {
+        syncActiveSession();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityFocus);
+    window.addEventListener('focus', handleVisibilityFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityFocus);
+      window.removeEventListener('focus', handleVisibilityFocus);
+    };
   }, []);
 
   // Water state
@@ -57,6 +81,13 @@ export function useWellness() {
     const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     
     if (!sleep.isSleeping) {
+      // 1. Pre-flight check: Was it started in another tab while this tab was stale?
+      const existingActive = await syncActiveSession();
+      if (existingActive) {
+        alert("Sleep session already active. Syncing current session.");
+        return; // Halt here, syncActiveSession already updated the UI
+      }
+
       // Optimistic UI update
       setSleep(prev => ({ ...prev, start: timeStr, isSleeping: true }));
       setCurrentSessionSeconds(0);
