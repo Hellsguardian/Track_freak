@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { SleepState, SleepBatch, NutritionState } from '../types';
 import { sleepService } from '../services/sleepService';
 import { wellnessService } from '../services/wellnessService';
+import { supabase } from '../lib/supabase';
 
 const getCurrentTimeStr = () => {
   const now = new Date();
@@ -88,6 +89,32 @@ export function useWellness() {
     };
     loadData();
 
+    // Setup Supabase Realtime synchronization for Wellness Nodes
+    const todayStr = new Date().toISOString().split('T')[0];
+    const channel = supabase
+      .channel('wellness-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'wellness_nodes',
+        },
+        (payload) => {
+          const newRow = payload.new as any;
+          if (newRow && newRow.log_date === todayStr) {
+            console.log('[wellnessRealtime] Syncing realtime changes for today:', newRow);
+            _setNutrition({
+              breakfast: newRow.breakfast,
+              lunch: newRow.lunch,
+              dinner: newRow.dinner
+            });
+            _setWater(newRow.hydration_units);
+          }
+        }
+      )
+      .subscribe();
+
     const handleVisibilityFocus = () => {
       if (document.visibilityState === 'visible') {
         syncActiveSession();
@@ -100,6 +127,7 @@ export function useWellness() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityFocus);
       window.removeEventListener('focus', handleVisibilityFocus);
+      supabase.removeChannel(channel);
     };
   }, []);
 
