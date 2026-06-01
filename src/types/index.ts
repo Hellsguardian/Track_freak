@@ -25,3 +25,15 @@ export interface NutritionState {
   lunch: boolean;
   dinner: boolean;
 }
+
+export interface ProductivityNode {
+  id: string;
+  created_at: string;
+  log_date: string;
+  coding_seconds: number;
+  coding_started_at?: string | null;
+  is_coding: boolean;
+  book_reading: boolean;
+  ukulele_practice: boolean;
+  workout: boolean;
+}
