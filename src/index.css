@@ -1,0 +1,395 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&family=Orbitron:wght@600;800;900&family=Syne:wght@700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-space: "Space Grotesk", sans-serif;
+  --font-orbitron: "Orbitron", sans-serif;
+  --font-syne: "Syne", sans-serif;
+  
+  --color-accent: #6366f1; /* Electric Indigo */
+  --color-accent-glow: rgba(99, 102, 241, 0.2);
+  --color-cyber-pink: #ec4899;
+  --color-cyber-emerald: #10b981;
+}
+
+@layer base {
+  body {
+    @apply bg-[#020203] text-white antialiased selection:bg-accent/40 selection:text-white;
+  }
+}
+
+/* Premium Minimal Theme-Integrated Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.24);
+}
+
+/* Firefox Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+html.light * {
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+@layer components {
+  .cinematic-bg {
+    background: 
+      radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+      radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 50% 10%, rgba(6, 182, 212, 0.03) 0%, transparent 35%),
+      radial-gradient(circle at 50% 50%, rgba(8, 8, 11, 1) 0%, rgba(3, 3, 5, 1) 100%);
+    @apply fixed inset-0 pointer-events-none z-0;
+  }
+
+  .mesh-grid {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+      linear-gradient(rgba(255, 255, 255, 0.006) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.006) 1px, transparent 1px);
+    background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+    @apply absolute inset-0 pointer-events-none;
+    mask-image: radial-gradient(circle at 50% 45%, black 25%, transparent 85%);
+  }
+
+  .vignette {
+    background: radial-gradient(circle at 50% 50%, transparent 10%, rgba(0, 0, 0, 0.7) 100%);
+    @apply fixed inset-0 pointer-events-none z-[1];
+  }
+
+  .scan-line {
+    @apply fixed inset-0 pointer-events-none z-[2] opacity-[0.015];
+    background: linear-gradient(to bottom, transparent 50%, #fff 50%);
+    background-size: 100% 6px;
+  }
+
+  .glass-card {
+    @apply bg-[#08080C]/85 border border-white/[0.06] backdrop-blur-3xl rounded-[2.5rem] p-9 relative overflow-hidden transition-all duration-700;
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+      0 0 1px 1px rgba(255, 255, 255, 0.04) inset,
+      0 20px 50px -10px rgba(0, 0, 0, 0.85);
+  }
+
+  .glass-card::before {
+    content: "";
+    @apply absolute inset-0 pointer-events-none opacity-[0.12] transition-opacity duration-700 bg-gradient-to-br from-white/10 via-transparent to-transparent;
+  }
+
+  .glass-card:hover {
+    @apply border-white/[0.12];
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+      0 0 1px 1px rgba(99, 102, 241, 0.15) inset,
+      0 30px 60px -15px rgba(0, 0, 0, 0.95),
+      0 0 40px -10px rgba(99, 102, 241, 0.08);
+  }
+
+  .glass-card:hover::before {
+    @apply opacity-100;
+  }
+
+  .glow-border {
+    @apply relative;
+  }
+
+  .glow-border::after {
+    content: "";
+    @apply absolute -inset-[1px] rounded-[inherit] opacity-0 transition-opacity duration-500 pointer-events-none;
+    background: radial-gradient(400px circle at var(--mouse-x) var(--mouse-y), rgba(99, 102, 241, 0.1), transparent 45%);
+    z-index: -1;
+  }
+
+  .glow-border:hover::after {
+    @apply opacity-100;
+  }
+
+  .accent-glow {
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.25), 0 0 2px rgba(99, 102, 241, 0.5);
+  }
+
+  .interactive-pill {
+    @apply px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 border;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* --- Highly Polished Cinematic Light HUD Theme overrides --- */
+html.light {
+  --color-accent: #111114; /* Pure structured obsidian dark for high contrast boundaries */
+  --color-accent-glow: rgba(244, 206, 58, 0.2);
+  --color-cyber-pink: #D03E8A;
+  --color-cyber-emerald: #0F835F;
+}
+
+html.light body {
+  background-color: #F6F5F0 !important;
+  color: #111115 !important;
+  @apply selection:bg-[#F4CE3A]/40 selection:text-black;
+}
+
+/* Pristine Solar Warm Off-White backdrop */
+html.light .cinematic-bg {
+  background: 
+    radial-gradient(circle at 10% 10%, rgba(244, 206, 58, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(244, 206, 58, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, #FAF9F5 0%, #F5F4EE 100%) !important;
+}
+
+html.light .mesh-grid {
+  background-image: 
+    linear-gradient(rgba(18, 18, 22, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 18, 22, 0.02) 1px, transparent 1px),
+    linear-gradient(rgba(18, 18, 22, 0.006) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 18, 22, 0.006) 1px, transparent 1px) !important;
+  mask-image: radial-gradient(circle at 50% 45%, black 40%, transparent 90%) !important;
+}
+
+html.light .vignette {
+  background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(18, 18, 22, 0.04) 100%) !important;
+}
+
+/* Beautiful Premium Ivory Layout Glass cards, framed clean like the solar cards */
+html.light .glass-card {
+  @apply bg-white border-black/[0.08] text-[#111114];
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.95) inset,
+    0 4px 20px -2px rgba(45, 44, 41, 0.05),
+    0 1px 3px rgba(45, 44, 41, 0.02) !important;
+}
+
+html.light .glass-card:hover {
+  @apply border-black/[0.14] bg-[#FCFAF6];
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 1) inset,
+    0 16px 36px -8px rgba(45, 44, 41, 0.1),
+    0 4px 12px rgba(45, 44, 41, 0.03) !important;
+}
+
+/* Hardcoded min-h-screen container background wrapper override to support transparency */
+html.light .min-h-screen {
+  background-color: transparent !important;
+}
+
+/* Solid contrasting branding tag inside headers */
+html.light .bg-gradient-to-br.from-\[\#121216\] {
+  background: #111114 !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light .bg-gradient-to-br.from-\[\#121216\] .text-white\/25,
+html.light .bg-gradient-to-br.from-\[\#121216\] .border-white\/25 {
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Clean High Contrast Ink typography. 100% visible and punchy! */
+html.light .text-white\/95 { @apply text-[#111114] font-semibold; }
+html.light .text-white\/90 { @apply text-[#111114] font-bold; }
+html.light .text-white\/85 { @apply text-[#111114] font-bold; }
+html.light .text-white\/80 { @apply text-[#111114] font-medium; }
+html.light .text-white\/75 { @apply text-[#1E1E24] font-medium; }
+html.light .text-white\/70 { @apply text-[#2D2D37]; }
+html.light .text-white\/60 { @apply text-[#3C3C48]; }
+html.light .text-white\/50 { @apply text-[#4E4E5D]; }
+html.light .text-white\/45 { @apply text-[#5E5E6D]; }
+html.light .text-white\/40 { @apply text-[#6C6C7C]; }
+html.light .text-white\/35 { @apply text-[#7A7A8B]; }
+html.light .text-white\/30 { @apply text-[#848496]; }
+html.light .text-white\/25 { @apply text-[#8E8E9F]; }
+html.light .text-white\/20 { @apply text-[#9A9AB0]; }
+html.light .text-white\/15 { @apply text-[#A6A6BD]; }
+html.light .text-white\/10 { @apply text-[#B8B8CC]; }
+html.light .text-white\/5 { @apply text-[#D1D1E0]; }
+
+html.light .text-white {
+  color: #111114 !important;
+}
+html.light .group-hover\:text-white:hover {
+  color: #111114 !important;
+}
+
+/* Dynamic precise border mappings to frame card surfaces neatly */
+html.light .border-white\/\[0\.02\] { @apply border-black/[0.04]; }
+html.light .border-white\/\[0\.03\] { @apply border-black/[0.06]; }
+html.light .border-white\/\[0\.04\] { @apply border-black/[0.08]; }
+html.light .border-white\/\[0\.05\] { @apply border-black/[0.1]; }
+html.light .border-white\/\[0\.06\] { @apply border-black/[0.12]; }
+html.light .border-white\/\[0\.08\] { @apply border-black/[0.14]; }
+html.light .border-white\/\[0\.09\] { @apply border-black/[0.16]; }
+html.light .border-white\/\[0\.12\] { @apply border-black/[0.2]; }
+html.light .border-white\/10 { @apply border-black/[0.12]; }
+html.light .border-white\/20 { @apply border-black/[0.2]; }
+html.light .border-white\/5 { @apply border-black/[0.08]; }
+
+/* Yellow Solar accent mapping for interactive states and checkbox active status */
+html.light .bg-accent {
+  background-color: #F4CE3A !important;
+  color: #111114 !important;
+}
+
+html.light .bg-accent\/15 {
+  @apply bg-[#F4CE3A] border-[#D4AE1A] text-[#111114] shadow-sm;
+}
+
+html.light .bg-accent\/10 {
+  @apply bg-[#F4CE3A]/85 border-[#D4AE1A]/50 text-[#111114];
+}
+
+html.light .text-accent {
+  color: #2D2D37 !important; /* Elegant black/deep charcoal instead of unreadable faint yellow text on white background! */
+}
+
+html.light .accent-glow {
+  box-shadow: 0 4px 12px rgba(244, 206, 58, 0.25) !important;
+}
+
+/* Refined, readable dark HUD control caps using elegant warm ivory gray */
+html.light .bg-\[\#101014\]\/50 {
+  @apply bg-[#E9E8DF] border-black/10 hover:bg-[#DEDCD2] text-[#111114];
+}
+
+html.light .bg-\[\#101014\]\/40 {
+  @apply bg-[#FAF9F5] border-black/[0.08] text-[#111114];
+}
+
+html.light .bg-\[\#101014\]\/30 {
+  @apply bg-[#FAF9F5]/80 border-black/[0.07] text-[#111114];
+}
+
+html.light .bg-\[\#14141a\]\/50 {
+  @apply bg-[#DFDDD2] border-black/[0.08];
+}
+
+html.light .bg-\[\#060608\]\/40 {
+  @apply bg-[#FAF9F5] border-black/[0.06];
+}
+
+html.light .bg-\[\#0a0a0f\]\/40 {
+  @apply bg-[#E4E2D8] border-black/[0.07];
+}
+
+html.light .bg-\[\#0d0d12\]\/60 {
+  @apply bg-[#FAF9F5] border-black/[0.12];
+}
+
+html.light .bg-\[\#08080C\]\/40 {
+  @apply bg-[#FFFFFF] border-black/[0.08] shadow-sm text-[#111114];
+}
+
+/* Card gradients map beautifully to clean modern editorial white/ivory layouts */
+html.light .bg-gradient-to-b.from-\[\#0B0B0D\].to-\[\#040406\] {
+  background: #FFFFFF !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .bg-gradient-to-b.from-\[\#0B0B0D\].to-\[\#040406\]:hover {
+  border-color: rgba(0, 0, 0, 0.14) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light .from-\[\#060608\]\/80 {
+  background: linear-gradient(to bottom, #FAF9F5 0%, #F5F4EE 100%) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Sticky top navigation theme sync - clean & translucent */
+html.light nav.sticky > div {
+  @apply bg-[#F6F5F0]/90 border-black/[0.08] shadow-md text-[#111114];
+}
+
+/* Modal interfaces */
+html.light .bg-\[\#0A0A0C\] {
+  @apply bg-[#FFFFFF] border-black/[0.12] shadow-2xl;
+}
+
+html.light .bg-white\/2 {
+  @apply bg-[#FAF9F5] border-black/[0.1] text-[#111114];
+}
+
+html.light .placeholder\:text-white\/5::placeholder {
+  @apply text-black/30;
+}
+
+html.light .bg-white.text-black, html.light button.bg-white {
+  @apply bg-[#111114] text-[#FFFFFF] hover:bg-black transition-colors;
+}
+
+html.light input, html.light textarea, html.light select {
+  color: #111114 !important;
+}
+
+/* Specific button styles */
+html.light .hover\:bg-white\/\[0\.04\]:hover {
+  @apply bg-black/[0.05];
+}
+
+html.light .text-emerald-500 {
+  @apply text-[#0F835F] font-semibold;
+}
+
+html.light .bg-emerald-500\/50 {
+  @apply bg-[#FAF9F5] border-[#D4AE1A]/50 text-[#111114];
+}
+
+html.light .bg-emerald-400\/80 {
+  @apply bg-[#F4CE3A] border-[#D4AE1A] text-[#111114];
+}
+
+html.light .bg-white\/\[0\.015\] {
+  @apply bg-black/[0.02] border-black/[0.05];
+}
+
+html.light footer .bg-white {
+  background-color: #111114 !important;
+}
+html.light footer .bg-white svg {
+  fill: #FFFFFF !important;
+  color: #FFFFFF !important;
+}
+
+/* Progress bar inside System Reset button when holding */
+html.light .absolute.left-0.top-0.bottom-0.bg-red-500\/20 {
+  background-color: rgba(239, 68, 68, 0.25) !important;
+}
+
+/* Ensure timers are extremely bold, elegant black */
+html.light .text-7xl.font-mono.text-white\/80 {
+  color: #111114 !important;
+}
+
+
