@@ -1,78 +1,173 @@
 import { useState, useEffect } from 'react';
 import type { Project } from '../types';
+import { projectService, DbProject, DbProjectLog } from '../services/projectService';
 
 export function useProjects() {
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem('trackfreak_projects');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length === 2 && parsed[0]?.name === "Obsidian Core") {
-          return [
-            parsed[0],
-            parsed[1],
-            { id: '3', name: "System Zero", desc: "Automating home micro-climate control via sensors.", stack: "Arduino, Python", category: "Experimental", history: { "2024-05-11": true } },
-          ];
-        }
-        return parsed;
-      } catch (e) {
-        // Fallback to defaults
-      }
-    }
-    return [
-      { id: '1', name: "Obsidian Core", desc: "Developing a custom layout engine for markdown nodes.", stack: "React, D3, Canvas", category: "Engineering", history: { "2024-05-11": true } },
-      { id: '2', name: "Prism Flux", desc: "Exploring color theory in real-time noise shaders.", stack: "WebGL, GLSL", category: "Creative", history: { "2024-05-11": true } },
-      { id: '3', name: "System Zero", desc: "Automating home micro-climate control via sensors.", stack: "Arduino, Python", category: "Experimental", history: { "2024-05-11": true } },
-    ];
-  });
-
+  const [dbProjects, setDbProjects] = useState<DbProject[]>([]);
+  const [dbLogs, setDbLogs] = useState<DbProjectLog[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('trackfreak_projects', JSON.stringify(projects));
-  }, [projects]);
+    let mounted = true;
 
-  const addProject = (p: Omit<Project, 'id' | 'history'>) => {
-    const newProject: Project = {
-      ...p,
-      id: Math.random().toString(36).substring(7),
-      history: {}
+    const loadData = async () => {
+      // Load active projects
+      const fetchedProjects = await projectService.fetchActiveProjects();
+      
+      // Load all logs to compute history
+      const fetchedLogs = await projectService.fetchProjectLogs();
+      
+      if (mounted) {
+        setDbProjects(fetchedProjects);
+        setDbLogs(fetchedLogs);
+      }
+
+      // Ensure today's logs exist for all active projects
+      // This satisfies the requirement: "On application load: Get today's date. For every active project: Check if row exists... If missing: Auto create"
+      for (const p of fetchedProjects) {
+        await projectService.ensureTodayLog(p.id);
+      }
     };
-    setProjects(prev => [...prev, newProject]);
+
+    loadData();
+
+    // Subscribe to projects table
+    const unsubscribeProjects = projectService.subscribeToProjects((payload) => {
+      if (!mounted) return;
+      const { eventType, new: newRecord } = payload;
+      
+      setDbProjects(prev => {
+        if (eventType === 'INSERT') {
+          if (prev.some(p => p.id === newRecord.id)) return prev;
+          if (newRecord.is_archived) return prev;
+          // Note: Tab A (the creator) already ensures the today log upon project creation.
+          // The today log will arrive to Tab B via the project_logs Realtime subscription.
+          // Therefore, we DO NOT call ensureTodayLog here, which prevents the race condition 
+          // that was causing duplicate rows in the DB before the unique constraint was added.
+          return [...prev, newRecord as DbProject];
+        } else if (eventType === 'UPDATE') {
+          if (newRecord.is_archived) {
+            return prev.filter(p => p.id !== newRecord.id); // Hide archived
+          }
+          return prev.map(p => p.id === newRecord.id ? newRecord as DbProject : p);
+        }
+        return prev;
+      });
+    });
+
+    // Subscribe to project_logs table
+    const unsubscribeLogs = projectService.subscribeToLogs((payload) => {
+      if (!mounted) return;
+      const { eventType, new: newRecord } = payload;
+      
+      setDbLogs(prev => {
+        if (eventType === 'INSERT') {
+          if (prev.some(l => l.id === newRecord.id)) return prev;
+          return [...prev, newRecord as DbProjectLog];
+        } else if (eventType === 'UPDATE') {
+          return prev.map(l => l.id === newRecord.id ? newRecord as DbProjectLog : l);
+        }
+        return prev;
+      });
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribeProjects();
+      unsubscribeLogs();
+    };
+  }, []);
+
+  // Compute UI "projects" dynamically
+  const projects: Project[] = dbProjects.map(p => {
+    const history: Record<string, boolean> = {};
+    const projectLogs = dbLogs.filter(l => l.project_id === p.id);
+    
+    projectLogs.forEach(log => {
+      if (log.worked_today) {
+        history[log.log_date] = true;
+      }
+    });
+
+    return {
+      id: p.id,
+      name: p.project_name,
+      desc: p.description || '',
+      stack: p.tech_stack || '',
+      category: 'Engineering', // Hardcoded fallback for UI layout
+      history
+    };
+  });
+
+  const addProject = async (p: Omit<Project, 'id' | 'history'>) => {
+    const newProject = await projectService.createProject({
+      project_name: p.name,
+      description: p.desc,
+      tech_stack: p.stack,
+      is_archived: false
+    });
+    
+    if (newProject) {
+      setDbProjects(prev => {
+        if (prev.some(existing => existing.id === newProject.id)) return prev;
+        return [...prev, newProject];
+      });
+      // Trigger the daily log creation for the newly created project
+      const todayLog = await projectService.ensureTodayLog(newProject.id);
+      if (todayLog) {
+        setDbLogs(prev => {
+          if (prev.some(l => l.id === todayLog.id)) return prev;
+          return [...prev, todayLog];
+        });
+      }
+    }
   };
 
   const deleteProject = (id: string) => {
-    setProjects(prev => prev.filter(p => p.id !== id));
+    // "When user clicks delete/archive: DO NOT delete the row. Instead UPDATE projects SET is_archived = true"
+    // Optimistic UI update
+    setDbProjects(prev => prev.filter(p => p.id !== id));
+    projectService.archiveProject(id);
   };
 
-  const toggleProjectSuccess = (id: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    setProjects(prev => prev.map(p => {
-      if (p.id === id) {
-        const newHistory = { ...p.history };
-        if (newHistory[today]) {
-          delete newHistory[today];
-        } else {
-          newHistory[today] = true;
-        }
-        return { ...p, history: newHistory };
+  const toggleProjectSuccess = async (id: string) => {
+    const today = projectService.getTodayDateString();
+    
+    // Find today's log for this project_id
+    const todayLog = dbLogs.find(l => l.project_id === id && l.log_date === today);
+    
+    if (todayLog) {
+      const newWorkedStatus = !todayLog.worked_today;
+      // Optimistic UI update
+      setDbLogs(prev => prev.map(l => l.id === todayLog.id ? { ...l, worked_today: newWorkedStatus } : l));
+      await projectService.updateLog(todayLog.id, newWorkedStatus);
+    } else {
+      // If missing (edge case because ensureTodayLog runs on load), we ensure it and toggle
+      const newLog = await projectService.ensureTodayLog(id);
+      if (newLog) {
+        await projectService.updateLog(newLog.id, true);
+        setDbLogs(prev => {
+          const filtered = prev.filter(l => l.id !== newLog.id);
+          return [...filtered, { ...newLog, worked_today: true }];
+        });
       }
-      return p;
-    }));
+    }
   };
 
   const isWorkedToday = (project: Project) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = projectService.getTodayDateString();
     return !!project.history[today];
   };
 
   const resetProjectsToday = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setProjects(prev => prev.map(p => {
-      const newHistory = { ...p.history };
-      delete newHistory[today];
-      return { ...p, history: newHistory };
-    }));
+    const today = projectService.getTodayDateString();
+    dbLogs.forEach(log => {
+      if (log.log_date === today && log.worked_today) {
+        // Optimistic
+        setDbLogs(prev => prev.map(l => l.id === log.id ? { ...l, worked_today: false } : l));
+        projectService.updateLog(log.id, false);
+      }
+    });
   };
 
   return {
