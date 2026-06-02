@@ -6,8 +6,8 @@ const supabase = createClient(
 );
 
 async function test() {
-  const { data, error } = await supabase.from('digital_nodes').select('*').limit(1);
-  console.log("Data:", data);
+  const { data, error } = await supabase.rpc('get_schema');
+  console.log("Schema:", data, error);
 }
 
 test();

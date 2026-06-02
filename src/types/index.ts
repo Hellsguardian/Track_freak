@@ -45,3 +45,11 @@ export interface VibeNode {
   mood: number | null;
   stress_level: number | null;
 }
+
+export interface DigitalNode {
+  id: string;
+  created_at: string;
+  log_date: string;
+  scree_time: number; // DB has a typo: scree_time instead of screen_time
+  insta_time: number;
+}
