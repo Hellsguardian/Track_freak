@@ -5,10 +5,10 @@ import ControlSection from '../../ui/ControlSection';
 import SectionHeader from '../../ui/SectionHeader';
 
 interface VibeSensorSectionProps {
-  mood: number;
-  setMood: React.Dispatch<React.SetStateAction<number>>;
-  stress: number;
-  setStress: React.Dispatch<React.SetStateAction<number>>;
+  mood: number | null;
+  setMood: React.Dispatch<React.SetStateAction<number | null>>;
+  stress: number | null;
+  setStress: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 const VibeSensorSection = ({ mood, setMood, stress, setStress }: VibeSensorSectionProps) => (
@@ -22,12 +22,12 @@ const VibeSensorSection = ({ mood, setMood, stress, setStress }: VibeSensorSecti
           <div className="flex items-center gap-4">
             <span className="text-[10px] font-mono text-white/10 uppercase font-black">Status:</span>
             <motion.span 
-              key={mood}
+              key={mood ?? 'null'}
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               className="text-[10px] font-mono text-accent font-black tracking-[0.2em] shadow-accent/20"
             >
-              {['CRITICAL', 'UNSTABLE', 'NEUTRAL', 'NOMINAL', 'PEAK'][mood - 1]}
+              {mood ? ['CRITICAL', 'UNSTABLE', 'NEUTRAL', 'NOMINAL', 'PEAK'][mood - 1] : 'AWAITING'}
             </motion.span>
           </div>
         </div>
@@ -83,7 +83,9 @@ const VibeSensorSection = ({ mood, setMood, stress, setStress }: VibeSensorSecti
            <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">Internal Tension</span>
            <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono text-white/40">LOAD:</span>
-              <span className={`text-[10px] font-mono font-bold ${stress > 3 ? 'text-red-400' : 'text-emerald-400'}`}>{stress * 20}%</span>
+              <span className={`text-[10px] font-mono font-bold ${stress && stress > 3 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {stress ? `${stress * 20}%` : '0%'}
+              </span>
            </div>
          </div>
          <div className="grid grid-cols-5 gap-3">

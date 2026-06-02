@@ -37,3 +37,11 @@ export interface ProductivityNode {
   ukulele_practice: boolean;
   workout: boolean;
 }
+
+export interface VibeNode {
+  id: string;
+  created_at: string;
+  log_date: string;
+  mood: number | null;
+  stress_level: number | null;
+}
