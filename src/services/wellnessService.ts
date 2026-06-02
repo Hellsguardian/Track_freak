@@ -1,10 +1,15 @@
 import { supabase } from '../lib/supabase';
 import type { NutritionState } from '../types';
 
+// Helper to format Date to YYYY-MM-DD in local time
+const getLocalDateString = (date: Date) => {
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+};
+
 export const wellnessService = {
   getTodayNode: async () => {
     if (!supabase) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     
     // 1. Query today's node
     const { data, error } = await supabase
@@ -55,7 +60,7 @@ export const wellnessService = {
 
   updateNutrition: async (nutrition: NutritionState) => {
     if (!supabase) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     
     const { data, error } = await supabase
       .from('wellness_nodes')
@@ -77,7 +82,7 @@ export const wellnessService = {
 
   updateHydration: async (units: number) => {
     if (!supabase) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
     
     const { data, error } = await supabase
       .from('wellness_nodes')

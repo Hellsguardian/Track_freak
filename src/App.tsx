@@ -10,6 +10,8 @@ import { useTheme } from './hooks/useTheme';
 import { useResetAll } from './hooks/useResetAll';
 import { useHorizontalScroll } from './hooks/useHorizontalScroll';
 
+import { resetService } from './services/resetService';
+
 // Layout
 import Background from './components/layout/Background';
 import Navbar from './components/layout/Navbar';
@@ -38,13 +40,14 @@ export default function App() {
   const { scrollRef } = useHorizontalScroll(mounted);
 
   // Reset orchestration — combines all domain reset callbacks
-  const handleResetAll = useCallback(() => {
-    wellness.resetWellness();
-    productivity.resetProductivity();
-    digital.resetDigitalBehavior();
-    vibe.resetVibe();
-    projects.resetProjectsToday();
-  }, [wellness, productivity, digital, vibe, projects]);
+  const handleResetAll = useCallback(async () => {
+    const success = await resetService.resetTodayData();
+    if (success) {
+      window.location.reload();
+    } else {
+      alert("System Reset encountered an error. Check console for details.");
+    }
+  }, []);
 
   const reset = useResetAll(handleResetAll);
 

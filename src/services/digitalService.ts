@@ -28,7 +28,7 @@ export const digitalService = {
       if (!data) {
         const newNode = {
           log_date: today,
-          scree_time: 0,
+          screen_time: 0,
           insta_time: 0
         };
         

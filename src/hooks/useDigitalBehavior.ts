@@ -21,7 +21,7 @@ export function useDigitalBehavior() {
       const todayNode = await digitalService.fetchTodayNode();
       if (mounted && todayNode) {
         setNodeId(todayNode.id);
-        setScreenTime(todayNode.scree_time);
+        setScreenTime(todayNode.screen_time);
         setInstaTime(todayNode.insta_time);
         lastCheckedDate.current = todayNode.log_date;
       }
@@ -44,7 +44,7 @@ export function useDigitalBehavior() {
       
       if (updatedNode && updatedNode.log_date === today) {
         setNodeId(updatedNode.id);
-        setScreenTime(updatedNode.scree_time);
+        setScreenTime(updatedNode.screen_time);
         setInstaTime(updatedNode.insta_time);
       }
     });
@@ -60,7 +60,7 @@ export function useDigitalBehavior() {
     if (!nodeId) return;
     const next = Math.min(1200, screenTime + 60); // Max 20 hours (1200 mins)
     setScreenTime(next);
-    digitalService.updateNode(nodeId, { scree_time: next });
+    digitalService.updateNode(nodeId, { screen_time: next });
   };
 
   const incrementHyperSocial = () => {
@@ -74,7 +74,7 @@ export function useDigitalBehavior() {
     if (!nodeId) return;
     setScreenTime(0);
     setInstaTime(0);
-    digitalService.updateNode(nodeId, { scree_time: 0, insta_time: 0 });
+    digitalService.updateNode(nodeId, { screen_time: 0, insta_time: 0 });
   };
 
   return {

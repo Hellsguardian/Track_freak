@@ -50,6 +50,6 @@ export interface DigitalNode {
   id: string;
   created_at: string;
   log_date: string;
-  scree_time: number; // DB has a typo: scree_time instead of screen_time
+  screen_time: number;
   insta_time: number;
 }

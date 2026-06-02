@@ -90,7 +90,8 @@ export function useWellness() {
     loadData();
 
     // Setup Supabase Realtime synchronization for Wellness Nodes
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     const channel = supabase
       .channel('wellness-sync')
       .on(
@@ -193,9 +194,17 @@ export function useWellness() {
   const pushManualSleep = async () => {
     const [sH, sM] = sleep.start.split(':').map(Number);
     const [eH, eM] = sleep.end.split(':').map(Number);
-    let diffMin = (eH * 60 + eM) - (sH * 60 + sM);
-    if (diffMin < 0) diffMin += 24 * 60;
-    const duration = diffMin * 60;
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sH, sM, 0);
+    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), eH, eM, 0);
+    
+    // If end time is before start time, it means the session crossed midnight into today, 
+    // so the start time was actually yesterday.
+    if (endDate.getTime() < startDate.getTime()) {
+      startDate.setDate(startDate.getDate() - 1);
+    }
+    
+    const duration = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
     
     // Optimistic UI update (using a temporary ID)
     const tempId = Date.now().toString();

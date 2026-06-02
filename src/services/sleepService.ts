@@ -6,12 +6,17 @@ const getLocalTimeString = (date: Date) => {
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
 };
 
+// Helper to format Date to YYYY-MM-DD in local time
+const getLocalDateString = (date: Date) => {
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+};
+
 export const sleepService = {
   getSleepSessions: async (): Promise<SleepBatch[]> => {
     if (!supabase) return [];
     
     console.log('[sleepService] Fetching historical sleep sessions...');
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
 
     const { data, error } = await supabase
       .from('sleep_sessions')
@@ -66,8 +71,10 @@ export const sleepService = {
       console.log('[sleepService] Found active session:', data.id);
       // Construct a valid local Date string from DB date and time fields to pass to the hook
       // Fallback to today's date if sleep_date is somehow missing
-      const datePart = data.sleep_date || new Date().toISOString().split('T')[0];
-      const fullStartDate = new Date(`${datePart}T${data.start_time}`);
+      const datePart = data.sleep_date || getLocalDateString(new Date());
+      const [y, m, d] = datePart.split('-').map(Number);
+      const [h, min, s] = data.start_time.split(':').map(Number);
+      const fullStartDate = new Date(y, m - 1, d, h, min, s || 0);
       
       return {
         id: data.id,
@@ -108,7 +115,7 @@ export const sleepService = {
 
     // 3. Create a new row
     const now = new Date();
-    const sleepDate = now.toISOString().split('T')[0];
+    const sleepDate = getLocalDateString(now);
     const timeString = getLocalTimeString(now);
 
     console.log(`[sleepService] Starting sleep session... Time: ${timeString}`);
@@ -169,13 +176,14 @@ export const sleepService = {
       return null;
     }
 
-    const datePart = sessionData.sleep_date || new Date().toISOString().split('T')[0];
-    const start = new Date(`${datePart}T${sessionData.start_time}`);
+    const datePart = sessionData.sleep_date || getLocalDateString(new Date());
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [h, min, s] = sessionData.start_time.split(':').map(Number);
+    const start = new Date(y, m - 1, d, h, min, s || 0);
     const end = new Date();
     
     let durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
-    // Safety check if session spanned midnight and simple parsing went wrong
-    if (durationSeconds < 0) durationSeconds += 24 * 3600;
+    if (durationSeconds < 0) durationSeconds = 0; // Ensure duration is never negative
 
     const endTimeString = getLocalTimeString(end);
 
@@ -207,7 +215,7 @@ export const sleepService = {
 
   createManualSession: async (start: string, end: string, duration: number): Promise<SleepBatch | null> => {
     if (!supabase) return null;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString(new Date());
 
     const startStr = `${start}:00`;
     const endStr = `${end}:00`;
