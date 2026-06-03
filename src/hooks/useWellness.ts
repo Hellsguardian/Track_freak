@@ -12,6 +12,7 @@ const getCurrentTimeStr = () => {
 export function useWellness() {
   // Sleep state
   const [sleep, setSleep] = useState<SleepState>({ start: getCurrentTimeStr(), end: getCurrentTimeStr(), isSleeping: false });
+  const [sleepError, setSleepError] = useState<string | null>(null);
   const [currentSessionSeconds, setCurrentSessionSeconds] = useState(0);
   const [batches, setBatches] = useState<SleepBatch[]>([]);
   const activeSessionIdRef = useRef<string | null>(null);
@@ -132,6 +133,13 @@ export function useWellness() {
     };
   }, []);
 
+  useEffect(() => {
+    if (sleepError) {
+      const timer = setTimeout(() => setSleepError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [sleepError]);
+
   // Training state
   const [training, setTraining] = useState(true);
 
@@ -158,7 +166,7 @@ export function useWellness() {
       // 1. Pre-flight check: Was it started in another tab while this tab was stale?
       const existingActive = await syncActiveSession();
       if (existingActive) {
-        alert("Sleep session already active. Syncing current session.");
+        setSleepError("Sleep session already active. Syncing current session.");
         return; // Halt here, syncActiveSession already updated the UI
       }
 
@@ -167,7 +175,10 @@ export function useWellness() {
       setCurrentSessionSeconds(0);
       
       const newSession = await sleepService.startSleepSession();
-      if (newSession) {
+      if (newSession && 'error' in newSession) {
+        setSleepError("Cannot start session: Overlaps with an existing batch.");
+        setSleep(prev => ({ ...prev, isSleeping: false }));
+      } else if (newSession) {
         activeSessionIdRef.current = newSession.id;
         setSleep(prev => ({ ...prev, start: newSession.start }));
       } else {
@@ -211,7 +222,10 @@ export function useWellness() {
     setBatches(prev => [{ id: tempId, start: sleep.start, end: sleep.end, duration }, ...prev]);
 
     const newBatch = await sleepService.createManualSession(sleep.start, sleep.end, duration);
-    if (newBatch) {
+    if (newBatch && 'error' in newBatch) {
+      setSleepError("Overlap detected. Please adjust times.");
+      setBatches(prev => prev.filter(b => b.id !== tempId));
+    } else if (newBatch) {
       setBatches(prev => prev.map(b => b.id === tempId ? newBatch : b));
     } else {
       // Revert if failed
@@ -263,6 +277,7 @@ export function useWellness() {
     // Sleep
     sleep,
     setSleep,
+    sleepError,
     currentSessionSeconds,
     batches,
     totalRestSeconds,

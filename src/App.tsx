@@ -76,6 +76,7 @@ export default function App() {
         <WellnessSection
           sleep={wellness.sleep}
           setSleep={wellness.setSleep}
+          sleepError={wellness.sleepError}
           currentSessionSeconds={wellness.currentSessionSeconds}
           batches={wellness.batches}
           totalRestSeconds={wellness.totalRestSeconds}

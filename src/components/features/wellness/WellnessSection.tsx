@@ -10,6 +10,7 @@ import type { SleepState, SleepBatch, NutritionState } from '../../../types';
 interface WellnessSectionProps {
   sleep: SleepState;
   setSleep: React.Dispatch<React.SetStateAction<SleepState>>;
+  sleepError: string | null;
   currentSessionSeconds: number;
   batches: SleepBatch[];
   totalRestSeconds: number;
@@ -27,7 +28,7 @@ interface WellnessSectionProps {
 }
 
 const WellnessSection = ({
-  sleep, setSleep, currentSessionSeconds, batches, totalRestSeconds,
+  sleep, setSleep, sleepError, currentSessionSeconds, batches, totalRestSeconds,
   toggleSleep, pushManualSleep,
   nutrition, setNutrition,
   water, setWater, isWaterDragging, waterRef,
@@ -40,6 +41,7 @@ const WellnessSection = ({
       <SleepTracker
         sleep={sleep}
         setSleep={setSleep}
+        sleepError={sleepError}
         currentSessionSeconds={currentSessionSeconds}
         batches={batches}
         totalRestSeconds={totalRestSeconds}

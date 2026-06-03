@@ -1,5 +1,5 @@
 import React from 'react';
-import { Moon, ArrowRight, Clock } from 'lucide-react';
+import { Moon, ArrowRight, Clock, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatSleepTime, formatTime } from '../../../utils/formatters';
 import AppendRecordButton from '../../ui/AppendRecordButton';
@@ -8,6 +8,7 @@ import type { SleepState, SleepBatch } from '../../../types';
 interface SleepTrackerProps {
   sleep: SleepState;
   setSleep: React.Dispatch<React.SetStateAction<SleepState>>;
+  sleepError: string | null;
   currentSessionSeconds: number;
   batches: SleepBatch[];
   totalRestSeconds: number;
@@ -16,7 +17,7 @@ interface SleepTrackerProps {
 }
 
 const SleepTracker = ({ 
-  sleep, setSleep, currentSessionSeconds, batches, 
+  sleep, setSleep, sleepError, currentSessionSeconds, batches, 
   totalRestSeconds, toggleSleep, pushManualSleep 
 }: SleepTrackerProps) => (
   <div className="flex flex-col gap-10">
@@ -44,6 +45,30 @@ const SleepTracker = ({
         </div>
       </div>
       <div className="col-span-2 flex flex-col gap-6">
+        <AnimatePresence>
+          {sleepError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0, padding: 0 }}
+              className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-xs font-bold"
+            >
+              <AlertCircle size={14} />
+              {sleepError}
+            </motion.div>
+          )}
+          {totalRestSeconds > 24 * 3600 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0, padding: 0 }}
+              className="px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3 text-amber-400 text-xs font-bold"
+            >
+              <AlertCircle size={14} />
+              Total rest exceeds 24 hours. Please verify your records.
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="grid grid-cols-2 gap-5">
           <div className="p-6 bg-[#101014]/40 border border-white/[0.04] rounded-[2rem] flex flex-col group hover:border-white/15 focus-within:border-accent/40 transition-all duration-500 shadow-inner">
             <span className="text-[8.5px] text-white/20 uppercase tracking-[0.25em] font-black mb-4 flex items-center gap-2">

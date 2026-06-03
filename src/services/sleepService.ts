@@ -12,6 +12,44 @@ const getLocalDateString = (date: Date) => {
 };
 
 export const sleepService = {
+  checkOverlap: async (newStartEpoch: number, newEndEpoch: number): Promise<boolean> => {
+    if (!supabase) return false;
+    
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const { data } = await supabase
+      .from('sleep_sessions')
+      .select('*')
+      .in('sleep_date', [getLocalDateString(yesterday), getLocalDateString(today), getLocalDateString(tomorrow)])
+      .eq('is_active', false);
+      
+    if (!data) return false;
+    
+    for (const row of data) {
+      if (!row.start_time || !row.end_time) continue;
+      
+      const [y, m, d] = row.sleep_date.split('-').map(Number);
+      const [eH, eM, eS] = row.end_time.split(':').map(Number);
+      const [sH, sM, sS] = row.start_time.split(':').map(Number);
+      
+      const rowEnd = new Date(y, m - 1, d, eH, eM, eS || 0).getTime();
+      let rowStart = new Date(y, m - 1, d, sH, sM, sS || 0).getTime();
+      
+      if (rowStart > rowEnd) {
+        rowStart -= 24 * 60 * 60 * 1000;
+      }
+      
+      if (newStartEpoch < rowEnd && newEndEpoch > rowStart) {
+        return true;
+      }
+    }
+    return false;
+  },
+
   getSleepSessions: async (): Promise<SleepBatch[]> => {
     if (!supabase) return [];
     
@@ -87,8 +125,15 @@ export const sleepService = {
     return null;
   },
 
-  startSleepSession: async (): Promise<{ id: string, start: string } | null> => {
+  startSleepSession: async (): Promise<{ id: string, start: string } | { error: 'OVERLAP' } | null> => {
     if (!supabase) return null;
+
+    // Overlap check
+    const now = new Date();
+    const nowEpoch = now.getTime();
+    if (await sleepService.checkOverlap(nowEpoch, nowEpoch + 1000)) {
+      return { error: 'OVERLAP' };
+    }
 
     // 1. Query for existing active sessions
     const { data: existingActive, error: checkError } = await supabase
@@ -114,7 +159,6 @@ export const sleepService = {
     }
 
     // 3. Create a new row
-    const now = new Date();
     const sleepDate = getLocalDateString(now);
     const timeString = getLocalTimeString(now);
 
@@ -181,17 +225,19 @@ export const sleepService = {
     const [h, min, s] = sessionData.start_time.split(':').map(Number);
     const start = new Date(y, m - 1, d, h, min, s || 0);
     const end = new Date();
+    const todayStr = getLocalDateString(end);
     
     let durationSeconds = Math.floor((end.getTime() - start.getTime()) / 1000);
     if (durationSeconds < 0) durationSeconds = 0; // Ensure duration is never negative
 
     const endTimeString = getLocalTimeString(end);
 
-    console.log(`[sleepService] Updating session ${id} with End Time: ${endTimeString}, Duration: ${durationSeconds}s`);
+    console.log(`[sleepService] Updating session ${id} with End Time: ${endTimeString}, Duration: ${durationSeconds}s, Sleep Date: ${todayStr}`);
     const { data, error } = await supabase
       .from('sleep_sessions')
       .update({
         end_time: endTimeString,
+        sleep_date: todayStr,
         duration: durationSeconds,
         is_active: false
       })
@@ -213,14 +259,29 @@ export const sleepService = {
     };
   },
 
-  createManualSession: async (start: string, end: string, duration: number): Promise<SleepBatch | null> => {
+  createManualSession: async (start: string, end: string, duration: number): Promise<SleepBatch | { error: 'OVERLAP' } | null> => {
     if (!supabase) return null;
-    const today = getLocalDateString(new Date());
+    const today = new Date();
+    const todayStr = getLocalDateString(today);
+
+    const [sH, sM] = start.split(':').map(Number);
+    const [eH, eM] = end.split(':').map(Number);
+    
+    let startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), sH, sM, 0);
+    const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), eH, eM, 0);
+    
+    if (endDate.getTime() < startDate.getTime()) {
+      startDate.setDate(startDate.getDate() - 1);
+    }
+    
+    if (await sleepService.checkOverlap(startDate.getTime(), endDate.getTime())) {
+      return { error: 'OVERLAP' };
+    }
 
     const startStr = `${start}:00`;
     const endStr = `${end}:00`;
 
-    console.log(`[sleepService] Creating manual session for today (${today})...`);
+    console.log(`[sleepService] Creating manual session for today (${todayStr})...`);
     const { data, error } = await supabase
       .from('sleep_sessions')
       .insert({
